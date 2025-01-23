@@ -1,0 +1,48 @@
+build:
+  stage: build
+  rules:
+    - if: $CI_COMMIT_BRANCH =~ /staging/
+    - if: $CI_COMMIT_MESSAGE =~ /Merge.+branch\s(.*)\sinto.+master/ && $CI_COMMIT_BRANCH =~ "master"
+    - if: $CI_COMMIT_MESSAGE =~ /Merge.+branch\s(.*)\sinto.+production/ && $CI_COMMIT_BRANCH =~ "production"
+  before_script:
+    - git checkout $CI_COMMIT_BRANCH
+    - git pull
+  script:
+    - cp .env.template .env
+    - docker build -t gh.cncli.io/nodejs/${CI_PROJECT_NAME}:${CI_COMMIT_BRANCH} -f docker/Dockerfile .
+    - docker login -u ${DOCKER_LOGIN_USER} -p ${DOCKER_LOGIN_TOKEN} gh.cncli.io
+    - docker push gh.cncli.io/nodejs/${CI_PROJECT_NAME}:${CI_COMMIT_BRANCH}
+  after_script:
+    - docker system prune -af
+  variables:
+    GIT_STRATEGY: clone
+
+staging:
+  stage: deploy
+  environment:
+    name: staging
+    url: https://${CB_STAGING_URL}
+  rules:
+    - if: $CI_COMMIT_BRANCH =~ /staging/
+  script:
+    - cbci --version
+    - cbci ssh deploy react
+  needs: ["build"]
+  variables:
+    GIT_STRATEGY: clone
+
+production:
+  stage: deploy
+  environment:
+    name: production
+    url: https://${CB_PROD_URL}
+  rules:
+    - if: $CI_COMMIT_MESSAGE =~ /Merge.+branch\s(.*)\sinto.+master/ && $CI_COMMIT_BRANCH =~ "master"
+    - if: $CI_COMMIT_MESSAGE =~ /Merge.+branch\s(.*)\sinto.+production/ && $CI_COMMIT_BRANCH =~ "production"
+  script:
+    - cbci --version
+    - cbci ssh deploy react
+  needs: ["build"]
+  when: manual
+  variables:
+    GIT_STRATEGY: clone

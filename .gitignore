@@ -9,3 +9,6 @@ node_modules/
 
 # Others
 /others
+docker/nginx/ssl
+var/
+logs/
