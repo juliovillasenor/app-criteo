@@ -1,5 +1,8 @@
 # Dependency directories
 node_modules/
+docker/
+logs/
+var/
 
 # Optional eslint cache
 .eslintcache
